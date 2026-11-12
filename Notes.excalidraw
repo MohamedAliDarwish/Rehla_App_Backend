@@ -1,0 +1,51 @@
+{
+  "type": "excalidraw",
+  "version": 2,
+  "source": "https://marketplace.visualstudio.com/items?itemName=pomdtr.excalidraw-editor",
+  "elements": [
+    {
+      "id": "dMKch-z2e5reK74qlQlOq",
+      "type": "text",
+      "x": 206,
+      "y": 142,
+      "width": 299.521484375,
+      "height": 325,
+      "angle": 0,
+      "strokeColor": "#1e1e1e",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "roughness": 1,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "index": "a3",
+      "roundness": null,
+      "seed": 1241888465,
+      "version": 28,
+      "versionNonce": 223361393,
+      "isDeleted": false,
+      "boundElements": null,
+      "updated": 1794317898612,
+      "link": null,
+      "locked": false,
+      "text": "JWT status code:\n\n401\n\nمفيش Token أو Token غير صالح\n\n403\n\nالمستخدم مسجل دخوله لكن معندوش صلاحية\n\n200\n\nمسموح له بالدخول",
+      "fontSize": 20,
+      "fontFamily": 5,
+      "textAlign": "left",
+      "verticalAlign": "top",
+      "containerId": null,
+      "originalText": "JWT status code:\n\n401\n\nمفيش Token أو Token غير صالح\n\n403\n\nالمستخدم مسجل دخوله لكن معندوش صلاحية\n\n200\n\nمسموح له بالدخول",
+      "autoResize": true,
+      "lineHeight": 1.25
+    }
+  ],
+  "appState": {
+    "gridSize": 20,
+    "gridStep": 5,
+    "gridModeEnabled": false,
+    "viewBackgroundColor": "#ffffff"
+  },
+  "files": {}
+}
