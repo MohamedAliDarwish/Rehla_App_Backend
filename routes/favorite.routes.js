@@ -17,16 +17,16 @@ const router = express.Router();
 router.use(protect, authorize("user"));
 
 // Get all favorites
-router.get("/", getFavorites);
+router.get("/", protect, getFavorites);
 
 // Check if trip is favorite
-router.get("/:tripId", checkFavorite);
+router.get("/:tripId", protect, checkFavorite);
 
 // Add favorite
-router.post("/:tripId", addFavorite);
+router.post("/:tripId", protect, addFavorite);
 
 // Remove favorite
-router.delete("/:tripId", removeFavorite);
+router.delete("/:tripId", protect, removeFavorite);
 
 module.exports = router;
 
