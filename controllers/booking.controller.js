@@ -1,3 +1,6 @@
+
+const mongoose = require('mongoose');
+
 const Booking = require('../models/booking.model');
 const Trip = require('../models/trip.model');
 
@@ -10,16 +13,14 @@ class BookingController {
                 tripId,
                 numberOfSeats = 1,
                 notes,
-                couponCode,
-                isProtected,
             } = req.body;
 
             const seats = Number(numberOfSeats);
 
-            if (!tripId) {
+            if (!tripId || !mongoose.isValidObjectId(tripId)) {
                 return res.status(400).json({
                     success: false,
-                    message: 'TRIP_ID_REQUIRED',
+                    message: 'INVALID_TRIP_ID',
                 });
             }
 
@@ -59,7 +60,9 @@ class BookingController {
             const existingBooking = await Booking.findOne({
                 user: req.user._id,
                 trip: tripId,
-                status: { $in: ['pending', 'approved'] },
+                status: {
+                    $in: ['pending', 'approved'],
+                },
             });
 
             if (existingBooking) {
@@ -69,48 +72,68 @@ class BookingController {
                 });
             }
 
-            let totalPrice = trip.price * seats;
+            const totalPrice = trip.price * seats;
 
-            if (couponCode) {
-                const couponService = require('../services/coupon.service');
+            // Reserve seats
+            const updatedTrip = await Trip.findOneAndUpdate(
+                {
+                    _id: tripId,
+                    isDeleted: false,
+                    status: 'published',
+                    availableSeats: {
+                        $gte: seats,
+                    },
+                },
+                {
+                    $inc: {
+                        availableSeats: -seats,
+                    },
+                },
+                {
+                    new: true,
+                }
+            );
 
-                const result = await couponService.validateCoupon(
-                    couponCode,
-                    totalPrice
-                );
-
-                totalPrice = result.finalPrice;
-
-                await result.coupon.updateOne({
-                    $inc: { usedCount: 1 },
+            if (!updatedTrip) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'NOT_ENOUGH_SEATS',
                 });
             }
 
-            const booking = await Booking.create({
-                user: req.user._id,
-                trip: tripId,
-                numberOfSeats: seats,
-                totalPrice,
-                notes,
-                isProtected:
-                    req.user.isProtected ||
-                    req.user.role === 'admin' ||
-                    isProtected === true ||
-                    isProtected === 'true',
+            let booking;
 
-                tripSnapshot: {
-                    title: trip.title,
-                    coverImage: trip.coverImage,
-                    origin: trip.origin,
-                    destination: trip.destination,
-                    startDate: trip.startDate,
-                    endDate: trip.endDate,
-                    pricePerSeat: trip.price,
-                },
-            });
+            try {
+                booking = await Booking.create({
+                    user: req.user._id,
+                    trip: tripId,
+                    numberOfSeats: seats,
+                    totalPrice,
+                    notes,
 
-            trip.availableSeats -= seats;
-            await trip.save();
+                    tripSnapshot: {
+                        title: trip.title,
+                        coverImage: trip.coverImage,
+                        origin: trip.origin,
+                        destination: trip.destination,
+                        startDate: trip.startDate,
+                        endDate: trip.endDate,
+                        pricePerSeat: trip.price,
+                    },
+                });
+
+            } catch (error) {
+                await Trip.updateOne(
+                    { _id: tripId },
+                    {
+                        $inc: {
+                            availableSeats: seats,
+                        },
+                    }
+                );
+
+                throw error;
+            }
 
             await booking.populate([
                 {
@@ -123,6 +146,7 @@ class BookingController {
                 },
             ]);
 
+            // Notifications
             try {
                 const notificationService = require('../services/notification.service');
 
@@ -135,7 +159,6 @@ class BookingController {
                         bookingId: booking._id,
                         tripId: trip._id,
                     },
-                    isProtected: booking.isProtected,
                 });
 
                 await notificationService.notifyAdmins({
@@ -146,7 +169,6 @@ class BookingController {
                         bookingId: booking._id,
                         tripId: trip._id,
                     },
-                    isProtected: booking.isProtected,
                 });
 
             } catch (error) {
@@ -172,10 +194,6 @@ class BookingController {
     // My Bookings
     getMyBookings = async (req, res) => {
         try {
-            const page = Math.max(1, Number(req.query.page) || 1);
-            const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 10));
-            const skip = (page - 1) * limit;
-
             const filter = {
                 user: req.user._id,
             };
@@ -184,28 +202,15 @@ class BookingController {
                 filter.status = req.query.status;
             }
 
-            const [bookings, total] = await Promise.all([
-                Booking.find(filter)
-                    .populate('trip')
-                    .sort({ createdAt: -1 })
-                    .skip(skip)
-                    .limit(limit),
-
-                Booking.countDocuments(filter),
-            ]);
+            const bookings = await Booking.find(filter)
+                .populate('trip')
+                .sort({ createdAt: -1 });
 
             return res.status(200).json({
                 success: true,
                 message: 'BOOKINGS_FETCHED',
-                data: {
-                    bookings,
-                    pagination: {
-                        total,
-                        page,
-                        limit,
-                        totalPages: Math.ceil(total / limit),
-                    },
-                },
+                results: bookings.length,
+                data: bookings,
             });
 
         } catch (error) {
@@ -221,39 +226,30 @@ class BookingController {
     // All Bookings - Admin
     getAllBookings = async (req, res) => {
         try {
-            const page = Math.max(1, Number(req.query.page) || 1);
-            const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 10));
-            const skip = (page - 1) * limit;
-
             const filter = {};
 
-            if (req.query.status) filter.status = req.query.status;
-            if (req.query.tripId) filter.trip = req.query.tripId;
-            if (req.query.userId) filter.user = req.query.userId;
+            if (req.query.status) {
+                filter.status = req.query.status;
+            }
 
-            const [bookings, total] = await Promise.all([
-                Booking.find(filter)
-                    .populate('user', 'fullName email phone profileImage')
-                    .populate('trip')
-                    .sort({ createdAt: -1 })
-                    .skip(skip)
-                    .limit(limit),
+            if (req.query.tripId) {
+                filter.trip = req.query.tripId;
+            }
 
-                Booking.countDocuments(filter),
-            ]);
+            if (req.query.userId) {
+                filter.user = req.query.userId;
+            }
+
+            const bookings = await Booking.find(filter)
+                .populate('user', 'fullName email phone profileImage')
+                .populate('trip')
+                .sort({ createdAt: -1 });
 
             return res.status(200).json({
                 success: true,
                 message: 'BOOKINGS_FETCHED',
-                data: {
-                    bookings,
-                    pagination: {
-                        total,
-                        page,
-                        limit,
-                        totalPages: Math.ceil(total / limit),
-                    },
-                },
+                results: bookings.length,
+                data: bookings,
             });
 
         } catch (error) {
@@ -269,6 +265,13 @@ class BookingController {
     // Get Booking By ID
     getBookingById = async (req, res) => {
         try {
+            if (!mongoose.isValidObjectId(req.params.id)) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'INVALID_BOOKING_ID',
+                });
+            }
+
             const booking = await Booking.findById(req.params.id)
                 .populate('user', 'fullName email phone profileImage')
                 .populate('trip');
@@ -367,11 +370,24 @@ class BookingController {
                 });
             }
 
+            if (booking.status === 'approved') {
+                return res.status(400).json({
+                    success: false,
+                    message: 'APPROVED_BOOKING_CANNOT_BE_REJECTED',
+                });
+            }
+
             const trip = await Trip.findById(booking.trip);
 
             if (trip) {
-                trip.availableSeats += booking.numberOfSeats;
-                await trip.save();
+                await Trip.updateOne(
+                    { _id: trip._id },
+                    {
+                        $inc: {
+                            availableSeats: booking.numberOfSeats,
+                        },
+                    }
+                );
             }
 
             booking.status = 'rejected';
@@ -430,13 +446,20 @@ class BookingController {
             const trip = await Trip.findById(booking.trip);
 
             if (trip) {
-                trip.availableSeats += booking.numberOfSeats;
-                await trip.save();
+                await Trip.updateOne(
+                    { _id: trip._id },
+                    {
+                        $inc: {
+                            availableSeats: booking.numberOfSeats,
+                        },
+                    }
+                );
             }
 
             booking.status = 'cancelled';
             booking.cancelledBy = isAdmin ? 'admin' : 'user';
-            booking.cancellationReason = req.body.cancellationReason || '';
+            booking.cancellationReason =
+                req.body.cancellationReason || '';
             booking.cancelledAt = new Date();
 
             await booking.save();

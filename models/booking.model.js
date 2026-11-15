@@ -8,52 +8,89 @@ const bookingSchema = new mongoose.Schema(
             ref: 'User',
             required: true,
         },
+
         trip: {
             type: mongoose.Schema.Types.ObjectId,
             ref: 'Trip',
             required: true,
         },
+
         numberOfSeats: {
             type: Number,
-            default: 1,
-            min: 1,
             required: true,
+            min: 1,
         },
+
         totalPrice: {
             type: Number,
             required: true,
             min: 0,
         },
-        tripSnapshot: {
-            title: { type: String, required: true },
-            coverImage: { type: String, default: '' },
-            origin: { type: String, required: true },
-            destination: { type: String, required: true },
-            startDate: { type: Date, required: true },
-            endDate: { type: Date, required: true },
-            pricePerSeat: { type: Number, required: true },
+
+        notes: {
+            type: String,
+            trim: true,
+            default: '',
         },
+
         status: {
             type: String,
-            enum: ['pending', 'approved', 'rejected', 'cancelled'],
+            enum: [
+                'pending',
+                'approved',
+                'rejected',
+                'cancelled',
+            ],
             default: 'pending',
         },
-        notes: { type: String, default: '' },
-        rejectionReason: { type: String, default: '' },
-        cancellationReason: { type: String, default: '' },
+
+        tripSnapshot: {
+            title: String,
+            coverImage: String,
+            origin: String,
+            destination: String,
+            startDate: Date,
+            endDate: Date,
+            pricePerSeat: Number,
+        },
+
+        approvedAt: {
+            type: Date,
+            default: null,
+        },
+
+        rejectedAt: {
+            type: Date,
+            default: null,
+        },
+
+        rejectionReason: {
+            type: String,
+            default: '',
+        },
+
+        cancelledAt: {
+            type: Date,
+            default: null,
+        },
+
         cancelledBy: {
             type: String,
             enum: ['user', 'admin'],
         },
-        approvedAt: Date,
-        rejectedAt: Date,
-        cancelledAt: Date,
-        isProtected: {
-            type: Boolean,
-            default: false,
+
+        cancellationReason: {
+            type: String,
+            default: '',
         },
     },
-    { timestamps: true }
+    {
+        timestamps: true,
+    }
 );
+
+bookingSchema.index({ user: 1, createdAt: -1 });
+bookingSchema.index({ trip: 1, status: 1 });
+bookingSchema.index({ status: 1, createdAt: -1 });
 
 module.exports = mongoose.model('Booking', bookingSchema);
