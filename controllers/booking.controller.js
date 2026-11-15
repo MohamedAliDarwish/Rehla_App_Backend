@@ -1,4 +1,3 @@
-
 const Booking = require('../models/booking.model');
 const Trip = require('../models/trip.model');
 
