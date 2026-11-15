@@ -32,12 +32,12 @@ const protect = async (req, res, next) => {
       });
     }
 
-    if (!user.isVerified) {
-      return res.status(403).json({
-        success: false,
-        message: "Account is not verified",
-      });
-    }
+//    if (!user.isVerified) {
+//      return res.status(403).json({
+//        success: false,
+//        message: "Account is not verified",
+//      });
+//    }
 
     // Attach user to request
     req.user = user;
