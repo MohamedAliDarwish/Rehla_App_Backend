@@ -39,6 +39,7 @@ const {
     getTripsByCategory,
     updateTrip,
     deleteTrip,
+getAllTripsAdmin,
 } = require("../controllers/trip.controller");
 
 // استبدل أسماء الـ Middleware بأسماء الملفات الموجودة عندك
@@ -50,6 +51,7 @@ router.get("/category/:categoryId", getTripsByCategory);
 router.get("/:id", getTripById);
 
 // Admin Routes
+router.get("/admin",protect,authorize("admin"),getAllTripsAdmin)
 router.post("/", protect, authorize("admin"), createTrip);
 router.put("/:id", protect, authorize("admin"), updateTrip);
 router.delete("/:id", protect, authorize("admin"), deleteTrip);

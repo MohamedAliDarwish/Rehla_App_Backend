@@ -126,6 +126,32 @@ const getAllTrips = async (req, res) => {
   }
 };
 
+
+// get all trips Admin
+const getAllTripsAdmin = async (req, res) => {
+  try {
+    const trips = await Trip.find({
+    })
+      .populate("category", "nameEn nameAr slug image")
+      .sort({ startDate: 1 })
+      .lean();
+
+    return res.status(200).json({
+      success: true,
+      results: trips.length,
+      data: trips,
+    });
+  } catch (error) {
+    console.error("Get Trips Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to retrieve trips",
+    });
+  }
+};
+
+
 // 3. Get Trip By ID - Public
 const getTripById = async (req, res) => {
   try {
