@@ -51,7 +51,7 @@ router.get("/category/:categoryId", getTripsByCategory);
 router.get("/:id", getTripById);
 
 // Admin Routes
-router.get("/admin",protect,authorize("admin"),getAllTripsAdmin)
+router.get("/admin",protect,authorize("admin"),getAllTripsAdmin);
 router.post("/", protect, authorize("admin"), createTrip);
 router.put("/:id", protect, authorize("admin"), updateTrip);
 router.delete("/:id", protect, authorize("admin"), deleteTrip);

@@ -449,4 +449,6 @@ module.exports = {
   getTripsByCategory,
   updateTrip,
   deleteTrip,
+getAllTripsAdmin,
+
 };
